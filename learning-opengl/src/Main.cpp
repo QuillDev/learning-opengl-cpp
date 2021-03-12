@@ -7,6 +7,9 @@
 #include <sstream>
 
 #include "GLDebugging/GLDebugMessageCallback.h"
+#include "Rendering/Renderer.h"
+#include "Rendering/VertexBuffer.h"
+#include "Rendering/IndexBuffer.h"
 
 struct ShaderProgramSource
 {
@@ -110,8 +113,11 @@ int main(void)
 	}
 
 	//Enable the debug function callback
-	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
+	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 	/* Create a windowed mode window and its OpenGL context */
 	window = glfwCreateWindow(640, 640, "OpenGL Learning Project | C++", NULL, NULL);
 	if (!window)
@@ -152,21 +158,19 @@ int main(void)
 		2, 3, 0
 	};
 
+	unsigned int vao;
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
 	//generate data for the Triangle => https://www.youtube.com/watch?v=0p9VxImr7Y0
-	unsigned int buffer; //id of the buffer
-	glGenBuffers(1, &buffer); //amount to create & buffer to output to.
-	glBindBuffer(GL_ARRAY_BUFFER, buffer); //select the buffer
-	glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(float), positions, GL_STATIC_DRAW); //give the binded buffer the data for drawing the geometry
+
+	VertexBuffer vb(positions, 8 * sizeof(float));
 
 	//Declare the layout of our buffer data => https://www.youtube.com/watch?v=x0H--CL2tUI
 	glEnableVertexAttribArray(0); //enable the vertex attribute pointer we defined
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0); //info about position attribute of the vertex in the data
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0); //info about position attribute of the vertex in the data //IMPORTANT: LINKS BUFFER TO VAO
 
 	//create the index buffer => https://youtu.be/MXNMC1YAxVQ?list=PLlrATfBNZ98foTJPJ_Ev03o2oq3-GGOS2&t=567
-	unsigned int indexBuffer; //id of the buffer
-	glGenBuffers(1, &indexBuffer); //amount to create & buffer to output to.
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer); //select the buffer
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indicies, GL_STATIC_DRAW); //give the binded buffer the data for drawing the geometry
+	IndexBuffer ib(indicies, 6);
 
 	//Shader creation https://youtu.be/71BLZwRGUJE?t=1178
 	ShaderProgramSource source = ParseShader("res/shaders/Basic.shader");
@@ -175,6 +179,11 @@ int main(void)
 	glUseProgram(shader); //select the shader for use in our program
 
 	int location = glGetUniformLocation(shader, "u_Color"); //get the uniform inside the shader
+
+	glUseProgram(0);
+	glBindVertexArray(0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	float r = 0.0f;
 	float g = 0.0f;
@@ -186,22 +195,18 @@ int main(void)
 		/* Render here */
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		//Uniform video https://youtu.be/DE6Xlx_kbo0?list=PLlrATfBNZ98foTJPJ_Ev03o2oq3-GGOS2
-		glUniform4f(location, r, 0.7f, 0.8f, 1.0f); //modify the value of the uniform inside of teh shader
+		glUseProgram(shader);
+		glUniform4f(location, r, 0.7f, 0.8f, 1.0f); //modify the value of the uniform inside of teh shader https://youtu.be/DE6Xlx_kbo0?list=PLlrATfBNZ98foTJPJ_Ev03o2oq3-GGOS2
+		
+		glBindVertexArray(vao);
+
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 
 		if (r > 1.0f)
-		{
 			increment = -0.05f;
-		}
 		else if (r < 0)
-		{
 			increment = 0.05f;
-		}
-
 		r += increment;
-		g += increment /2.f;
-		b += increment / 4.f;
 		/* Swap front and back buffers */
 		glfwSwapBuffers(window);
 
